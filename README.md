@@ -1,4 +1,4 @@
-# 3D Gaussian Splatting for Real-Time Radiance Field Rendering
+# Tiled 3D Gaussian Splatting for Real-Time Radiance Field Rendering
 
 ### Read first
 __This is a forked Windows Installation Tutorial and the main codes will not be updated__

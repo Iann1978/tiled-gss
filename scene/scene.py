@@ -21,13 +21,28 @@ from utils.camera_utils import cameraList_from_camInfos, camera_to_JSON
 class PartedScene:
     def __init__(self,cameras) -> None:
         
-        with open("./scene/cameras.json", 'r') as file:
-            json_data = json.load(file)
+        # filename = "./scene/cameras.json"
+        # filename = "D:/work/projects/iann-gaussian-splatting-data/matrix_city_for_tiled_gss/parted/images.json.00"
+        
+        # with open(filename, 'r') as file:
+        #     json_data = json.load(file)
             
-            self.selected_cameras = [False for i in range(0, 1055)]
-            for i in json_data:
+        #     self.selected_cameras = [False for i in range(0, 1055)]
+        #     for i in json_data:
+        #         for j in range(0, 1055):
+        #             if i["img_name"] == cameras[j].image_name:
+        #                 self.selected_cameras[j] = True
+        self.selected_cameras = [False for i in range(0, len(cameras))]
+        
+        filename = "D:/work/projects/iann-gaussian-splatting-data/matrix_city_for_tiled_gss/parted/tiles.json.00"
+        with open(filename, 'r') as file:
+            json_data = json.load(file)
+            cameras_name_who_can_see_the_tile = json_data[0]["cameras_name_who_can_see_the_tile"]
+            
+            
+            for i in cameras_name_who_can_see_the_tile:
                 for j in range(0, 1055):
-                    if i["img_name"] == cameras[j].image_name:
+                    if i[:4] == cameras[j].image_name:
                         self.selected_cameras[j] = True
 class Scene:
 

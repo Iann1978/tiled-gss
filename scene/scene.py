@@ -18,6 +18,17 @@ from scene.gaussian_model import GaussianModel
 from arguments import ModelParams
 from utils.camera_utils import cameraList_from_camInfos, camera_to_JSON
 
+class PartedScene:
+    def __init__(self,cameras) -> None:
+        
+        with open("./scene/cameras.json", 'r') as file:
+            json_data = json.load(file)
+            
+            self.selected_cameras = [False for i in range(0, 1055)]
+            for i in json_data:
+                for j in range(0, 1055):
+                    if i["img_name"] == cameras[j].image_name:
+                        self.selected_cameras[j] = True
 class Scene:
 
     gaussians : GaussianModel
@@ -67,6 +78,7 @@ class Scene:
             random.shuffle(scene_info.test_cameras)  # Multi-res consistent random shuffling
 
         self.cameras_extent = scene_info.nerf_normalization["radius"]
+        self.cameras_extent = 2.37
 
         for resolution_scale in resolution_scales:
             print("Loading Training Cameras")
@@ -81,13 +93,30 @@ class Scene:
                                                            "point_cloud.ply"))
         else:
             self.gaussians.create_from_pcd(scene_info.point_cloud, self.cameras_extent)
+            
+        self.part = PartedScene(self.train_cameras[1.0])
 
     def save(self, iteration):
         point_cloud_path = os.path.join(self.model_path, "point_cloud/iteration_{}".format(iteration))
         self.gaussians.save_ply(os.path.join(point_cloud_path, "point_cloud.ply"))
 
+    # def getTrainCameras(self, scale=1.0):
+    #     return self.train_cameras[scale]
+    
     def getTrainCameras(self, scale=1.0):
-        return self.train_cameras[scale]
+        cameras = []
+        for i in range(len(self.train_cameras[scale])):
+            if self.part.selected_cameras[i]:
+                cameras.append(self.train_cameras[scale][i])
+        
+        # print("Selected Cameras: ")
+        # for c in cameras:
+        #     print(c.image_name)
+        # print("Randomly Shuffled Cameras: ")
+        # random.shuffle(cameras)
+        # for c in cameras:
+        #     print(c.image_name)
+        return cameras
 
     def getTestCameras(self, scale=1.0):
         return self.test_cameras[scale]

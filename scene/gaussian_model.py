@@ -188,10 +188,20 @@ class GaussianModel:
             l.append('rot_{}'.format(i))
         return l
 
-    def save_ply(self, path):
+    def save_ply(self, path, bounds=None):
         mkdir_p(os.path.dirname(path))
 
         xyz = self._xyz.detach().cpu().numpy()
+        min = np.array(bounds[0]) if bounds else np.min(xyz, axis=0)
+        max = np.array(bounds[1]) if bounds else np.max(xyz, axis=0)
+        x_mask = np.logical_and(xyz[:, 0] > min[0], xyz[:, 0] < max[0])
+        y_mask = np.logical_and(xyz[:, 1] > min[1], xyz[:, 1] < max[1])
+        z_mask = np.logical_and(xyz[:, 2] > min[2], xyz[:, 2] < max[2])
+        
+        # low_mask = np.logical_and(xyz[:, 2] > min[2], xyz[:, 0] > min[0], xyz[:, 1] > min[1])
+        # high_mask = np.logical_and(xyz[:, 0] < max[0], xyz[:, 1] < max[1], xyz[:, 2] < max[2])
+        mask = np.logical_and(np.logical_and(x_mask, z_mask), y_mask)
+
         normals = np.zeros_like(xyz)
         f_dc = self._features_dc.detach().transpose(1, 2).flatten(start_dim=1).contiguous().cpu().numpy()
         f_rest = self._features_rest.detach().transpose(1, 2).flatten(start_dim=1).contiguous().cpu().numpy()
@@ -201,8 +211,8 @@ class GaussianModel:
 
         dtype_full = [(attribute, 'f4') for attribute in self.construct_list_of_attributes()]
 
-        elements = np.empty(xyz.shape[0], dtype=dtype_full)
-        attributes = np.concatenate((xyz, normals, f_dc, f_rest, opacities, scale, rotation), axis=1)
+        elements = np.empty(mask.sum(), dtype=dtype_full)
+        attributes = np.concatenate((xyz[mask], normals[mask], f_dc[mask], f_rest[mask], opacities[mask], scale[mask], rotation[mask]), axis=1)
         elements[:] = list(map(tuple, attributes))
         el = PlyElement.describe(elements, 'vertex')
         PlyData([el]).write(path)

@@ -37,6 +37,8 @@ class PartedScene:
         filename = "D:/work/projects/iann-gaussian-splatting-data/matrix_city_for_tiled_gss/parted/tiles.json.00"
         with open(filename, 'r') as file:
             json_data = json.load(file)
+            self.bounds = [ json_data[0]["min"], json_data[0]["max"] ]
+           
             cameras_name_who_can_see_the_tile = json_data[0]["cameras_name_who_can_see_the_tile"]
             
             
@@ -44,6 +46,9 @@ class PartedScene:
                 for j in range(0, 1055):
                     if i[:4] == cameras[j].image_name:
                         self.selected_cameras[j] = True
+    @property
+    def name(self):
+        return "00"
 class Scene:
 
     gaussians : GaussianModel
@@ -111,9 +116,13 @@ class Scene:
             
         self.part = PartedScene(self.train_cameras[1.0])
 
-    def save(self, iteration):
+    def save(self, part, iteration):
         point_cloud_path = os.path.join(self.model_path, "point_cloud/iteration_{}".format(iteration))
-        self.gaussians.save_ply(os.path.join(point_cloud_path, "point_cloud.ply"))
+        point_cloud_name = "point_cloud.ply.{}".format(part.name)
+        clipped_point_cloud_name = "point_cloud.ply.{}.clip".format(part.name)
+        bounds = part.bounds if hasattr(part, "bounds") else None
+        self.gaussians.save_ply(os.path.join(point_cloud_path, clipped_point_cloud_name ), bounds=bounds)
+        self.gaussians.save_ply(os.path.join(point_cloud_path, point_cloud_name))
 
     # def getTrainCameras(self, scale=1.0):
     #     return self.train_cameras[scale]

@@ -19,7 +19,8 @@ from arguments import ModelParams
 from utils.camera_utils import cameraList_from_camInfos, camera_to_JSON
 
 class PartedScene:
-    def __init__(self,cameras) -> None:
+    def __init__(self, cameras, name) -> None:
+        self.name = name
         
         # filename = "./scene/cameras.json"
         # filename = "D:/work/projects/iann-gaussian-splatting-data/matrix_city_for_tiled_gss/parted/images.json.00"
@@ -34,7 +35,7 @@ class PartedScene:
         #                 self.selected_cameras[j] = True
         self.selected_cameras = [False for i in range(0, len(cameras))]
         
-        filename = "D:/work/projects/iann-gaussian-splatting-data/matrix_city_for_tiled_gss/parted/tiles.json.00"
+        filename = "D:/work/projects/iann-gaussian-splatting-data/matrix_city_for_tiled_gss/parted/{}.json".format(name)
         with open(filename, 'r') as file:
             json_data = json.load(file)
             self.bounds = [ json_data[0]["min"], json_data[0]["max"] ]
@@ -46,21 +47,22 @@ class PartedScene:
                 for j in range(0, 1055):
                     if i[:4] == cameras[j].image_name:
                         self.selected_cameras[j] = True
-    @property
-    def name(self):
-        return "00"
+
+    
 class Scene:
 
-    gaussians : GaussianModel
+    # gaussians : GaussianModel
 
-    def __init__(self, args : ModelParams, gaussians : GaussianModel, load_iteration=None, shuffle=True, resolution_scales=[1.0]):
+    def __init__(self, args : ModelParams, load_iteration=None, shuffle=True, resolution_scales=[1.0]):
         """b
         :param path: Path to colmap scene main folder.
         """
+        
+        self.args = args
         self.model_path = args.model_path
         self.loaded_iter = None
-        self.gaussians = gaussians
-
+        # self.gaussians = gaussians
+       
         if load_iteration:
             if load_iteration == -1:
                 self.loaded_iter = searchForMaxIteration(os.path.join(self.model_path, "point_cloud"))
@@ -106,15 +108,13 @@ class Scene:
             print("Loading Test Cameras")
             self.test_cameras[resolution_scale] = cameraList_from_camInfos(scene_info.test_cameras, resolution_scale, args)
 
-        if self.loaded_iter:
-            self.gaussians.load_ply(os.path.join(self.model_path,
-                                                           "point_cloud",
-                                                           "iteration_" + str(self.loaded_iter),
-                                                           "point_cloud.ply"))
-        else:
-            self.gaussians.create_from_pcd(scene_info.point_cloud, self.cameras_extent)
+        self.point_cloud = scene_info.point_cloud
+
             
-        self.part = PartedScene(self.train_cameras[1.0])
+        # self.part = PartedScene(self.train_cameras[1.0])
+        self.parts = []
+        self.parts.append(PartedScene(self.train_cameras[1.0], name="part_00"))
+        self.parts.append(PartedScene(self.train_cameras[1.0], name="part_01"))
 
     def save(self, part, iteration):
         point_cloud_path = os.path.join(self.model_path, "point_cloud/iteration_{}".format(iteration))
@@ -127,10 +127,10 @@ class Scene:
     # def getTrainCameras(self, scale=1.0):
     #     return self.train_cameras[scale]
     
-    def getTrainCameras(self, scale=1.0):
+    def getTrainCameras(self, part, scale=1.0):
         cameras = []
         for i in range(len(self.train_cameras[scale])):
-            if self.part.selected_cameras[i]:
+            if part.selected_cameras[i]:
                 cameras.append(self.train_cameras[scale][i])
         
         # print("Selected Cameras: ")
@@ -144,3 +144,40 @@ class Scene:
 
     def getTestCameras(self, scale=1.0):
         return self.test_cameras[scale]
+    
+    def getGaussianmodel(self,part):
+        self.gaussians = GaussianModel(self.args.sh_degree)
+
+        if self.loaded_iter:
+            self.gaussians.load_ply(os.path.join(self.model_path,
+                                                           "point_cloud",
+                                                           "iteration_" + str(self.loaded_iter),
+                                                           "point_cloud.ply"))
+        else:
+            self.gaussians.create_from_pcd(self.point_cloud, self.cameras_extent)
+        return self.gaussians
+    
+    def merge_parts_and_save(self, iteration):
+        point_cloud_pathname = os.path.join(self.model_path, "point_cloud/iteration_{}".format(iteration), "point_cloud.ply")
+        
+        from plyfile import PlyData, PlyElement
+        import numpy as np
+        
+        input_files = []
+        for part in self.parts:
+            input_files.append(os.path.join(self.model_path, "point_cloud/iteration_{}/point_cloud.ply.{}.clip".format(iteration, part.name)))
+       
+        combined_vertices = []
+        for input_file in input_files:
+            # Read the current PLY file
+            ply_data = PlyData.read(input_file)
+            
+            # Append vertices from the current file
+            combined_vertices.append(ply_data['vertex'].data)
+        
+        # Combine the vertex data
+        combined_vertices = np.concatenate(combined_vertices)
+        ply_elements = [PlyElement.describe(combined_vertices, 'vertex')]
+        merged_ply = PlyData(ply_elements)
+        merged_ply.write(point_cloud_pathname)
+        

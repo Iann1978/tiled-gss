@@ -35,18 +35,30 @@ class PartedScene:
         #                 self.selected_cameras[j] = True
         self.selected_cameras = [False for i in range(0, len(cameras))]
         
-        filename = "D:/work/projects/iann-gaussian-splatting-data/matrix_city_for_tiled_gss/parted/{}.json".format(name)
-        with open(filename, 'r') as file:
-            json_data = json.load(file)
-            self.bounds = [ json_data[0]["min"], json_data[0]["max"] ]
+        # filename = "D:/work/projects/iann-gaussian-splatting-data/matrix_city_for_tiled_gss/parted/{}.json".format(name)
+        # with open(filename, 'r') as file:
+        #     json_data = json.load(file)
+        #     self.bounds = [ json_data[0]["min"], json_data[0]["max"] ]
            
-            cameras_name_who_can_see_the_tile = json_data[0]["cameras_name_who_can_see_the_tile"]
+        #     cameras_name_who_can_see_the_tile = json_data[0]["cameras_name_who_can_see_the_tile"]
             
             
-            for i in cameras_name_who_can_see_the_tile:
-                for j in range(0, 1055):
-                    if i[:4] == cameras[j].image_name:
-                        self.selected_cameras[j] = True
+        #     for i in cameras_name_who_can_see_the_tile:
+        #         for j in range(0, 1055):
+        #             if i[:4] == cameras[j].image_name:
+        #                 self.selected_cameras[j] = True
+                        
+    def load_from_json(self, cameras, json_data):
+        self.name = json_data["name"]
+        self.bounds = [ json_data["min"], json_data["max"] ]
+        cameras_name_who_can_see_the_tile = json_data["cameras_name_who_can_see_the_tile"]
+        self.selected_cameras = [False for i in range(0, len(cameras))]
+        for i in cameras_name_who_can_see_the_tile:
+            for j in range(0, len(cameras)):
+                if i[:4] == cameras[j].image_name:
+                    self.selected_cameras[j] = True
+        
+
 
     
 class Scene:
@@ -113,8 +125,9 @@ class Scene:
             
         # self.part = PartedScene(self.train_cameras[1.0])
         self.parts = []
-        self.parts.append(PartedScene(self.train_cameras[1.0], name="part_00"))
-        self.parts.append(PartedScene(self.train_cameras[1.0], name="part_01"))
+        # self.parts.append(PartedScene(self.train_cameras[1.0], name="part_00"))
+        # self.parts.append(PartedScene(self.train_cameras[1.0], name="part_01"))
+        self.load_parts()
 
     def save(self, part, iteration):
         point_cloud_path = os.path.join(self.model_path, "point_cloud/iteration_{}".format(iteration))
@@ -180,4 +193,13 @@ class Scene:
         ply_elements = [PlyElement.describe(combined_vertices, 'vertex')]
         merged_ply = PlyData(ply_elements)
         merged_ply.write(point_cloud_pathname)
+        
+    def load_parts(self):
+        filename = "D:/work/projects/iann-gaussian-splatting-data/matrix_city_for_tiled_gss/parted/parts.json"
+        with open(filename, 'r') as file:
+            json_data = json.load(file)
+            for i in json_data:
+                part = PartedScene(self.train_cameras[1.0], "")
+                part.load_from_json(self.train_cameras[1.0], i)
+                self.parts.append(part)
         

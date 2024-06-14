@@ -52,6 +52,7 @@ def training(dataset, opt, pipe, testing_iterations, saving_iterations, checkpoi
     
     for partidx, part in enumerate(scene.parts):
         print(Fore.GREEN + "Training part({}/{}): {}".format(partidx, len(scene.parts), part.name) + Style.RESET_ALL)
+        scene.clear_viewpoints_cache()
         gaussians = scene.getGaussianmodel(part)
         gaussians.training_setup(opt)
         if checkpoint:

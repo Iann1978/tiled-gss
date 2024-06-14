@@ -202,4 +202,6 @@ class Scene:
                 part = PartedScene(self.train_cameras[1.0], "")
                 part.load_from_json(self.train_cameras[1.0], i)
                 self.parts.append(part)
-        
+    def clear_viewpoints_cache(self):
+        for viewpoint in self.train_cameras[1.0]:
+            viewpoint.original_image = None

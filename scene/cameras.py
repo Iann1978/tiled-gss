@@ -67,7 +67,7 @@ class Camera(nn.Module):
         self.camera_center = self.world_view_transform.inverse()[3, :3]
 
     def ensure_original_image(self):
-        if not hasattr(self, "original_image"):
+        if not hasattr(self, "original_image") or self.original_image is None:
             pil_image = PILImage.open(self.image_path)
             original_image = PILtoTorch(pil_image, (self.image_width, self.image_height))
             self.original_image = original_image

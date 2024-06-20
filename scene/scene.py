@@ -195,7 +195,7 @@ class Scene:
         merged_ply.write(point_cloud_pathname)
         
     def load_parts(self):
-        filename = "D:/work/projects/iann-gaussian-splatting-data/matrix_city_for_tiled_gss/parted/parts.json"
+        filename = os.path.join(self.args.source_path, "parted/parts.json")
         with open(filename, 'r') as file:
             json_data = json.load(file)
             for i in json_data:

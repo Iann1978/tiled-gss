@@ -33,7 +33,7 @@ try:
 except ImportError:
     TENSORBOARD_FOUND = False
 
-def training(dataset, opt, pipe, testing_iterations, saving_iterations, checkpoint_iterations, checkpoint, debug_from):
+def training(dataset, opt, pipe, parts, testing_iterations, saving_iterations, checkpoint_iterations, checkpoint, debug_from):
     first_iter = 0
     tb_writer = prepare_output_and_logger(dataset)
     # gaussians = GaussianModel(dataset.sh_degree)
@@ -51,6 +51,10 @@ def training(dataset, opt, pipe, testing_iterations, saving_iterations, checkpoi
     
     
     for partidx, part in enumerate(scene.parts):
+        if parts and part.name not in parts:
+            continue
+        
+        # try:
         print(Fore.GREEN + "Training part({}/{}): {}".format(partidx, len(scene.parts), part.name) + Style.RESET_ALL)
         scene.clear_viewpoints_cache()
         gaussians = scene.getGaussianmodel(part)
@@ -147,6 +151,9 @@ def training(dataset, opt, pipe, testing_iterations, saving_iterations, checkpoi
                 if (iteration in checkpoint_iterations):
                     print("\n[ITER {}] Saving Checkpoint".format(iteration))
                     torch.save((gaussians.capture(), iteration), scene.model_path + "/chkpnt" + str(iteration) + ".pth")
+        # except Exception as e:
+        #     print("Exception in part({}):".format(part.name), e)
+         
 
     print("All parts training complete.")
     print(Fore.GREEN + "Merging parts and saving final model" + Style.RESET_ALL)
@@ -196,11 +203,11 @@ def training_report(tb_writer, part, iteration, Ll1, loss, l1_loss, elapsed, tes
                     image = torch.clamp(renderFunc(viewpoint, scene.gaussians, *renderArgs)["render"], 0.0, 1.0)
                     viewpoint.ensure_original_image()
                     gt_image = torch.clamp(viewpoint.original_image.to("cuda"), 0.0, 1.0)
-                    if tb_writer and (idx < 5):
-                        tb_writer.add_images(part.name +"/" + config['name'] + "_view_{}/render".format(viewpoint.image_name), image[None], global_step=iteration)
+                    if tb_writer and (idx < 10):
+                        tb_writer.add_images(part.name +"/" + config['name'] + "_view_{}".format(viewpoint.image_name), image[None], global_step=iteration)
                         tb_writer.flush()
                         if iteration == testing_iterations[0]:
-                            tb_writer.add_images(part.name + "/" + config['name'] + "_view_{}/ground_truth".format(viewpoint.image_name), gt_image[None], global_step=iteration)
+                            tb_writer.add_images(part.name + "/" + config['name'] + "_view_{}".format(viewpoint.image_name), gt_image[None], global_step=0)
                             tb_writer.flush()
                     l1_test += l1_loss(image, gt_image).mean().double()
                     psnr_test += psnr(image, gt_image).mean().double()
@@ -229,6 +236,7 @@ if __name__ == "__main__":
     parser.add_argument('--detect_anomaly', action='store_true', default=False)
     parser.add_argument("--test_iterations", nargs="+", type=int, default=[7_000, 30_000])
     parser.add_argument("--save_iterations", nargs="+", type=int, default=[7_000, 30_000])
+    parser.add_argument("--parts", nargs="+", type=str, default=None)
     parser.add_argument("--quiet", action="store_true")
     parser.add_argument("--checkpoint_iterations", nargs="+", type=int, default=[])
     parser.add_argument("--start_checkpoint", type=str, default = None)
@@ -243,7 +251,7 @@ if __name__ == "__main__":
     # Start GUI server, configure and run training
     network_gui.init(args.ip, args.port)
     torch.autograd.set_detect_anomaly(args.detect_anomaly)
-    training(lp.extract(args), op.extract(args), pp.extract(args), args.test_iterations, args.save_iterations, args.checkpoint_iterations, args.start_checkpoint, args.debug_from)
+    training(lp.extract(args), op.extract(args), pp.extract(args), args.parts, args.test_iterations, args.save_iterations, args.checkpoint_iterations, args.start_checkpoint, args.debug_from)
 
     # All done
     print("\nTraining complete.")
